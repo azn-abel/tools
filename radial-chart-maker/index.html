@@ -228,12 +228,26 @@
         }
 
         .legend-text {
-            color: #aaa;
+            color: var(--legend-color, #fff);
         }
 
         .legend-value {
-            color: #eee;
+            color: var(--legend-color, #fff);
             font-weight: 500;
+        }
+
+        .legend-color-picker {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #333;
+        }
+
+        .legend-color-picker label {
+            font-size: 0.85rem;
+            color: #aaa;
         }
 
         @media (max-width: 800px) {
@@ -257,6 +271,10 @@
             <h2>Categories</h2>
             <div class="category-list" id="categoryList"></div>
             <button class="add-btn" onclick="addCategory()">+ Add Category</button>
+            <div class="legend-color-picker">
+                <label>Legend text:</label>
+                <input type="color" id="legendColor" class="color-picker" value="#ffffff" onchange="updateLegendColor(this.value)">
+            </div>
         </div>
 
         <div class="chart-container">
@@ -287,6 +305,13 @@
             { name: 'E2E Tests', value: 45, color: '#f472b6' },
             { name: 'API Coverage', value: 91, color: '#fbbf24' },
         ];
+
+        let legendColor = '#ffffff';
+
+        function updateLegendColor(color) {
+            legendColor = color;
+            document.getElementById('legend').style.setProperty('--legend-color', color);
+        }
 
         function getColor(index) {
             return categories[index]?.color || COLORS[index % COLORS.length];
@@ -488,12 +513,12 @@
                     ctx.fillRect(x, y, 14, 14);
 
                     // Category name
-                    ctx.fillStyle = '#aaaaaa';
+                    ctx.fillStyle = legendColor;
                     ctx.fillText(cat.name + ': ', x + 24, y + 11);
 
                     // Value
                     const nameWidth = ctx.measureText(cat.name + ': ').width;
-                    ctx.fillStyle = '#eeeeee';
+                    ctx.fillStyle = legendColor;
                     ctx.font = '600 14px system-ui, -apple-system, sans-serif';
                     ctx.fillText(cat.value + '%', x + 24 + nameWidth, y + 11);
                     ctx.font = '14px system-ui, -apple-system, sans-serif';
@@ -513,6 +538,7 @@
         renderInputs();
         renderChart();
         renderLegend();
+        document.getElementById('legend').style.setProperty('--legend-color', legendColor);
     </script>
 </body>
 </html>
