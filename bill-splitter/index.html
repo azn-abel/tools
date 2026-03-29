@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bill Splitter</title>
+  <style>
+    @media print {
+      @page {
+        margin: 20mm;
+      }
+      body {
+        background: white !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      #results {
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    }
+  </style>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      margin-top: 0;
+      color: #555;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    .item-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    input, select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    .item-name {
+      flex: 2;
+      min-width: 120px;
+    }
+    .item-price {
+      flex: 1;
+      min-width: 80px;
+    }
+    .item-payers {
+      flex: 3;
+      min-width: 200px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+      padding: 10px 15px;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #1e7e34;
+    }
+    .tax-tip-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .tax-tip-row label {
+      min-width: 100px;
+    }
+    .tax-tip-row input {
+      width: 120px;
+    }
+    .results {
+      background: #e8f5e9;
+    }
+    .person-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px;
+      border-bottom: 1px solid #c8e6c9;
+      font-size: 16px;
+    }
+    .person-total:last-child {
+      border-bottom: none;
+    }
+    .person-name {
+      font-weight: bold;
+      color: #2e7d32;
+    }
+    .person-amount {
+      font-weight: bold;
+      color: #1b5e20;
+    }
+    .breakdown {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .helper-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+    }
+    .tip-options {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .tip-options label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .grand-total {
+      background: #1b5e20;
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 15px;
+      color: #555;
+      font-size: 14px;
+    }
+    .btn-export {
+      background: #6c5ce7;
+      color: white;
+      margin-top: 15px;
+      width: 100%;
+    }
+    .btn-export:hover {
+      background: #5b4cdb;
+    }
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    .print-header {
+      display: none;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .print-header h1 {
+      margin: 0;
+      color: #333;
+    }
+    .print-header p {
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="no-print">Bill Splitter</h1>
+
+  <div class="section no-print">
+    <h2>Settings</h2>
+    <div class="tax-tip-row">
+      <label for="bill-title">Title:</label>
+      <input type="text" id="bill-title" placeholder="e.g., Dinner at Restaurant" style="flex: 1;">
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+      <button class="btn btn-secondary" onclick="exportJSON()" id="json-export-btn">Download Template</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('json-import').click()">Import JSON</button>
+      <input type="file" id="json-import" accept=".json" style="display: none;" onchange="importJSON(event)">
+    </div>
+  </div>
+
+  <div class="section no-print">
+    <h2>Items</h2>
+    <div id="items-container">
+      <div class="item-row">
+        <input type="text" class="item-name" placeholder="Item name">
+        <input type="number" class="item-price" placeholder="Price" step="0.01" min="0">
+        <input type="text" class="item-payers" placeholder="Names (comma-separated) or 'all'">
+        <button class="btn btn-danger" onclick="removeItem(this)">X</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addItem()">+ Add Item</button>
+    <p class="helper-text">Enter names separated by commas (e.g., "Alice, Bob") or type "all" for everyone to split equally.</p>
+  </div>
+
+  <div class="section no-print">
+    <h2>Tax (Optional)</h2>
+    <div class="tax-tip-row">
+      <label for="tax-amount">Tax Amount: $</label>
+      <input type="number" id="tax-amount" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <p class="helper-text">Tax is split proportionally based on each person's item total.</p>
+  </div>
+
+  <div class="section no-print">
+    <h2>Tip (Optional)</h2>
+    <div class="tax-tip-row">
+      <label for="tip-amount">Tip Amount: $</label>
+      <input type="number" id="tip-amount" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="tip-options">
+      <label>
+        <input type="radio" name="tip-split" value="weighted" checked>
+        Split by spending (weighted)
+      </label>
+      <label>
+        <input type="radio" name="tip-split" value="even">
+        Split evenly
+      </label>
+    </div>
+  </div>
+
+  <button class="btn btn-success no-print" onclick="calculate()" style="width: 100%; padding: 15px; font-size: 18px;">Calculate Split</button>
+
+  <div id="results" class="section results" style="display: none;">
+    <div class="print-header">
+      <h1 id="print-title">Bill Split Summary</h1>
+      <p id="print-date"></p>
+    </div>
+    <h2 class="no-print">Results</h2>
+    <div id="summary"></div>
+    <div id="totals"></div>
+    <button class="btn btn-export no-print" onclick="exportPDF()">Export as PDF</button>
+  </div>
+
+  <script>
+    function addItem() {
+      const container = document.getElementById('items-container');
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <input type="text" class="item-name" placeholder="Item name">
+        <input type="number" class="item-price" placeholder="Price" step="0.01" min="0">
+        <input type="text" class="item-payers" placeholder="Names (comma-separated) or 'all'">
+        <button class="btn btn-danger" onclick="removeItem(this)">X</button>
+      `;
+      container.appendChild(row);
+    }
+
+    // Auto-add new row when typing in last row
+    document.getElementById('items-container').addEventListener('input', function(e) {
+      const container = this;
+      const rows = container.querySelectorAll('.item-row');
+      const lastRow = rows[rows.length - 1];
+
+      if (e.target.closest('.item-row') === lastRow) {
+        const hasContent = lastRow.querySelector('.item-name').value.trim() ||
+                          lastRow.querySelector('.item-price').value.trim() ||
+                          lastRow.querySelector('.item-payers').value.trim();
+        if (hasContent) {
+          addItem();
+        }
+      }
+    });
+
+    function removeItem(btn) {
+      const container = document.getElementById('items-container');
+      if (container.children.length > 1) {
+        btn.parentElement.remove();
+      }
+    }
+
+    function calculate() {
+      const rows = document.querySelectorAll('.item-row');
+      const items = [];
+      const allPeople = new Set();
+
+      // First pass: collect all people names
+      rows.forEach(row => {
+        const payersInput = row.querySelector('.item-payers').value.trim().toLowerCase();
+        if (payersInput && payersInput !== 'all') {
+          const payers = payersInput.split(',').map(p => p.trim()).filter(p => p);
+          payers.forEach(p => allPeople.add(p));
+        }
+      });
+
+      // Second pass: parse items
+      rows.forEach(row => {
+        const name = row.querySelector('.item-name').value.trim();
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        const payersInput = row.querySelector('.item-payers').value.trim().toLowerCase();
+
+        if (name && price > 0 && payersInput) {
+          let payers;
+          if (payersInput === 'all') {
+            payers = Array.from(allPeople);
+          } else {
+            payers = payersInput.split(',').map(p => p.trim()).filter(p => p);
+          }
+
+          if (payers.length > 0) {
+            items.push({ name, price, payers });
+          }
+        }
+      });
+
+      if (items.length === 0) {
+        alert('Please add at least one valid item with a price and payers.');
+        return;
+      }
+
+      // Calculate per-person item totals
+      const personItems = {};
+      const finalPeople = new Set();
+
+      items.forEach(item => {
+        const perPerson = item.price / item.payers.length;
+        item.payers.forEach(person => {
+          finalPeople.add(person);
+          if (!personItems[person]) {
+            personItems[person] = { items: [], subtotal: 0 };
+          }
+          personItems[person].items.push({ name: item.name, amount: perPerson });
+          personItems[person].subtotal += perPerson;
+        });
+      });
+
+      const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+      const tax = parseFloat(document.getElementById('tax-amount').value) || 0;
+      const tip = parseFloat(document.getElementById('tip-amount').value) || 0;
+      const tipSplitType = document.querySelector('input[name="tip-split"]:checked').value;
+
+      // Calculate final totals
+      const personTotals = {};
+      const peopleArray = Array.from(finalPeople);
+
+      peopleArray.forEach(person => {
+        const data = personItems[person];
+        const itemsTotal = data.subtotal;
+        const weight = itemsTotal / subtotal;
+
+        // Tax is always weighted
+        const personTax = tax * weight;
+
+        // Tip can be weighted or even
+        let personTip;
+        if (tipSplitType === 'weighted') {
+          personTip = tip * weight;
+        } else {
+          personTip = tip / peopleArray.length;
+        }
+
+        personTotals[person] = {
+          items: data.items,
+          itemsTotal,
+          tax: personTax,
+          tip: personTip,
+          total: itemsTotal + personTax + personTip
+        };
+      });
+
+      // Display results
+      const resultsDiv = document.getElementById('results');
+      const summaryDiv = document.getElementById('summary');
+      const totalsDiv = document.getElementById('totals');
+
+      summaryDiv.innerHTML = `
+        <div class="summary-line">
+          <span>Subtotal:</span>
+          <span>$${subtotal.toFixed(2)}</span>
+        </div>
+        ${tax > 0 ? `<div class="summary-line"><span>Tax:</span><span>$${tax.toFixed(2)}</span></div>` : ''}
+        ${tip > 0 ? `<div class="summary-line"><span>Tip (${tipSplitType}):</span><span>$${tip.toFixed(2)}</span></div>` : ''}
+        <div class="grand-total">
+          <span>Grand Total:</span>
+          <span>$${(subtotal + tax + tip).toFixed(2)}</span>
+        </div>
+      `;
+
+      totalsDiv.innerHTML = '<h3 style="margin-top: 20px; color: #555;">Per Person:</h3>';
+
+      // Sort people alphabetically
+      peopleArray.sort().forEach(person => {
+        const data = personTotals[person];
+        const itemsList = data.items.map(i => `${i.name}: $${i.amount.toFixed(2)}`).join(', ');
+
+        let breakdownParts = [`Items: $${data.itemsTotal.toFixed(2)}`];
+        if (tax > 0) breakdownParts.push(`Tax: $${data.tax.toFixed(2)}`);
+        if (tip > 0) breakdownParts.push(`Tip: $${data.tip.toFixed(2)}`);
+
+        totalsDiv.innerHTML += `
+          <div class="person-total">
+            <div>
+              <span class="person-name">${person.charAt(0).toUpperCase() + person.slice(1)}</span>
+              <div class="breakdown">${breakdownParts.join(' + ')}</div>
+              <div class="breakdown" style="color: #999;">${itemsList}</div>
+            </div>
+            <span class="person-amount">$${data.total.toFixed(2)}</span>
+          </div>
+        `;
+      });
+
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Add event listeners for real-time calculation on Enter key
+    document.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        calculate();
+      }
+    });
+
+    function exportPDF() {
+      // Set the title and date for the print header
+      const title = document.getElementById('bill-title').value.trim() || 'Bill Split Summary';
+      document.getElementById('print-title').textContent = title;
+      document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      // Open print dialog - user can save as PDF
+      window.print();
+    }
+
+    function hasData() {
+      const rows = document.querySelectorAll('.item-row');
+      for (const row of rows) {
+        const name = row.querySelector('.item-name').value.trim();
+        const price = row.querySelector('.item-price').value.trim();
+        const payers = row.querySelector('.item-payers').value.trim();
+        if (name || price || payers) return true;
+      }
+      const tax = document.getElementById('tax-amount').value.trim();
+      const tip = document.getElementById('tip-amount').value.trim();
+      return !!(tax || tip);
+    }
+
+    function updateExportButton() {
+      const btn = document.getElementById('json-export-btn');
+      btn.textContent = hasData() ? 'Export JSON' : 'Download Template';
+    }
+
+    function exportJSON() {
+      const rows = document.querySelectorAll('.item-row');
+      const items = [];
+
+      rows.forEach(row => {
+        const name = row.querySelector('.item-name').value.trim();
+        const price = row.querySelector('.item-price').value;
+        const payers = row.querySelector('.item-payers').value.trim();
+        items.push({ name, price: price ? parseFloat(price) : null, payers });
+      });
+
+      const data = {
+        title: document.getElementById('bill-title').value.trim(),
+        items: hasData() ? items : [
+          { name: "Example Item 1", price: 15.99, payers: "alice, bob" },
+          { name: "Example Item 2", price: 8.50, payers: "alice" },
+          { name: "Shared Appetizer", price: 12.00, payers: "all" }
+        ],
+        tax: parseFloat(document.getElementById('tax-amount').value) || (hasData() ? 0 : 3.50),
+        tip: parseFloat(document.getElementById('tip-amount').value) || (hasData() ? 0 : 7.00),
+        tipSplitType: document.querySelector('input[name="tip-split"]:checked').value
+      };
+
+      if (!hasData() && !data.title) {
+        data.title = "Example Dinner";
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = hasData() ? 'bill-split.json' : 'bill-split-template.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          // Set title
+          document.getElementById('bill-title').value = data.title || '';
+
+          // Clear existing items
+          const container = document.getElementById('items-container');
+          container.innerHTML = '';
+
+          // Add items
+          const items = data.items || [];
+          if (items.length === 0) {
+            addItem();
+          } else {
+            items.forEach(item => {
+              const row = document.createElement('div');
+              row.className = 'item-row';
+              row.innerHTML = `
+                <input type="text" class="item-name" placeholder="Item name" value="${item.name || ''}">
+                <input type="number" class="item-price" placeholder="Price" step="0.01" min="0" value="${item.price || ''}">
+                <input type="text" class="item-payers" placeholder="Names (comma-separated) or 'all'" value="${item.payers || ''}">
+                <button class="btn btn-danger" onclick="removeItem(this)">X</button>
+              `;
+              container.appendChild(row);
+            });
+          }
+
+          // Set tax and tip
+          document.getElementById('tax-amount').value = data.tax || '';
+          document.getElementById('tip-amount').value = data.tip || '';
+
+          // Set tip split type
+          if (data.tipSplitType) {
+            const radio = document.querySelector(`input[name="tip-split"][value="${data.tipSplitType}"]`);
+            if (radio) radio.checked = true;
+          }
+
+          // Hide results
+          document.getElementById('results').style.display = 'none';
+
+          updateExportButton();
+        } catch (err) {
+          alert('Invalid JSON file');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // Update export button on input changes
+    document.addEventListener('input', updateExportButton);
+    document.addEventListener('DOMContentLoaded', updateExportButton);
+  </script>
+</body>
+</html>
