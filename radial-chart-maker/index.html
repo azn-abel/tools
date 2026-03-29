@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radial Chart Maker</title>
+    <meta name="description" content="Free online tool to create beautiful radial charts for visualizing code test coverage. Customize colors, export high-resolution PNGs for presentations and reports.">
+    <meta name="keywords" content="radial chart, code coverage, test coverage, visualization, chart maker, coverage report, unit tests, integration tests">
+    <meta name="author" content="Radial Chart Maker">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://radialchartmaker.com">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Radial Chart Maker - Code Coverage Visualizations">
+    <meta property="og:description" content="Free online tool to create beautiful radial charts for visualizing code test coverage. Export high-resolution PNGs.">
+    <meta property="og:image" content="https://radialchartmaker.com/og-image.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Radial Chart Maker - Code Coverage Visualizations">
+    <meta name="twitter:description" content="Free online tool to create beautiful radial charts for visualizing code test coverage.">
+    <meta name="twitter:image" content="https://radialchartmaker.com/og-image.png">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-weight: 300;
+            font-size: 1.8rem;
+        }
+
+        .container {
+            display: flex;
+            gap: 3rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .controls {
+            background: #16213e;
+            padding: 1.5rem;
+            border-radius: 12px;
+            min-width: 320px;
+            max-width: 400px;
+        }
+
+        .controls h2 {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .category-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .color-picker {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            padding: 0;
+            cursor: pointer;
+            flex-shrink: 0;
+            background: transparent;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+
+        .color-picker::-moz-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+
+        .category-item input[type="text"] {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .category-item input[type="number"] {
+            width: 70px;
+        }
+
+        input {
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: #eee;
+            font-size: 0.9rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4a7c59;
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.2rem;
+            line-height: 1;
+            border-radius: 4px;
+        }
+
+        .remove-btn:hover {
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .add-btn {
+            background: #4a7c59;
+            border: none;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .add-btn:hover {
+            background: #5a9c69;
+        }
+
+        .export-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            align-items: center;
+        }
+
+        .filename-input {
+            width: 160px;
+        }
+
+        .export-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .export-btn:hover {
+            background: #2563eb;
+        }
+
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #chart {
+            width: 400px;
+            height: 400px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            max-width: 400px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .legend-text {
+            color: #aaa;
+        }
+
+        .legend-value {
+            color: #eee;
+            font-weight: 500;
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #chart {
+                width: 320px;
+                height: 320px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Radial Chart Maker</h1>
+
+    <div class="container">
+        <div class="controls">
+            <h2>Categories</h2>
+            <div class="category-list" id="categoryList"></div>
+            <button class="add-btn" onclick="addCategory()">+ Add Category</button>
+        </div>
+
+        <div class="chart-container">
+            <svg id="chart" viewBox="0 0 400 400"></svg>
+            <div class="legend" id="legend"></div>
+            <div class="export-row">
+                <input type="text" id="filename" placeholder="coverage-chart" class="filename-input">
+                <button class="export-btn" onclick="exportPNG()">Export PNG</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COLORS = [
+            '#4ade80', // green
+            '#60a5fa', // blue
+            '#f472b6', // pink
+            '#fbbf24', // yellow
+            '#a78bfa', // purple
+            '#fb923c', // orange
+            '#2dd4bf', // teal
+            '#f87171', // red
+        ];
+
+        let categories = [
+            { name: 'Unit Tests', value: 85, color: '#4ade80' },
+            { name: 'Integration', value: 72, color: '#60a5fa' },
+            { name: 'E2E Tests', value: 45, color: '#f472b6' },
+            { name: 'API Coverage', value: 91, color: '#fbbf24' },
+        ];
+
+        function getColor(index) {
+            return categories[index]?.color || COLORS[index % COLORS.length];
+        }
+
+        function renderInputs() {
+            const list = document.getElementById('categoryList');
+            list.innerHTML = categories.map((cat, i) => `
+                <div class="category-item">
+                    <input type="color"
+                           class="color-picker"
+                           value="${cat.color}"
+                           onchange="updateCategory(${i}, 'color', this.value)">
+                    <input type="text"
+                           value="${cat.name}"
+                           placeholder="Category name"
+                           onchange="updateCategory(${i}, 'name', this.value)">
+                    <input type="number"
+                           value="${cat.value}"
+                           min="0"
+                           max="100"
+                           onchange="updateCategory(${i}, 'value', this.value)">
+                    <span style="color: #666">%</span>
+                    <button class="remove-btn" onclick="removeCategory(${i})" ${categories.length <= 1 ? 'disabled' : ''}>×</button>
+                </div>
+            `).join('');
+        }
+
+        function updateCategory(index, field, value) {
+            if (field === 'value') {
+                value = Math.max(0, Math.min(100, parseInt(value) || 0));
+            }
+            categories[index][field] = value;
+            renderChart();
+            renderLegend();
+        }
+
+        function addCategory() {
+            const color = COLORS[categories.length % COLORS.length];
+            categories.push({ name: `Category ${categories.length + 1}`, value: 50, color });
+            renderInputs();
+            renderChart();
+            renderLegend();
+        }
+
+        function removeCategory(index) {
+            if (categories.length > 1) {
+                categories.splice(index, 1);
+                renderInputs();
+                renderChart();
+                renderLegend();
+            }
+        }
+
+        function describeArc(cx, cy, radius, startAngle, endAngle) {
+            const start = polarToCartesian(cx, cy, radius, endAngle);
+            const end = polarToCartesian(cx, cy, radius, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+
+            return [
+                'M', start.x, start.y,
+                'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y
+            ].join(' ');
+        }
+
+        function polarToCartesian(cx, cy, radius, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180;
+            return {
+                x: cx + radius * Math.cos(angleInRadians),
+                y: cy + radius * Math.sin(angleInRadians)
+            };
+        }
+
+        function renderChart() {
+            const svg = document.getElementById('chart');
+            const cx = 200;
+            const cy = 200;
+            const innerRadius = 105;
+            const maxRadius = 180;
+            const ringCount = categories.length;
+            const ringGap = 6;
+
+            // Calculate ring width to fill available space
+            const availableSpace = maxRadius - innerRadius;
+            const totalGaps = Math.max(0, ringCount - 1) * ringGap;
+            const ringWidth = ringCount > 0 ? (availableSpace - totalGaps) / ringCount : 0;
+
+            const average = categories.length > 0
+                ? Math.round(categories.reduce((sum, c) => sum + c.value, 0) / categories.length)
+                : 0;
+
+            let html = `
+                <defs>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+            `;
+
+            // Background rings (innermost first, outermost last)
+            categories.forEach((cat, i) => {
+                const radius = innerRadius + ringWidth / 2 + i * (ringWidth + ringGap);
+                html += `
+                    <circle
+                        cx="${cx}"
+                        cy="${cy}"
+                        r="${radius}"
+                        fill="none"
+                        stroke="#2a2a4a"
+                        stroke-width="${ringWidth}"
+                    />
+                `;
+            });
+
+            // Value arcs (innermost first, outermost last)
+            categories.forEach((cat, i) => {
+                const radius = innerRadius + ringWidth / 2 + i * (ringWidth + ringGap);
+                const angle = (cat.value / 100) * 360;
+
+                if (angle > 0) {
+                    const arcAngle = Math.min(angle, 359.9);
+                    html += `
+                        <path
+                            d="${describeArc(cx, cy, radius, 0, arcAngle)}"
+                            fill="none"
+                            stroke="${getColor(i)}"
+                            stroke-width="${ringWidth}"
+                        />
+                    `;
+                }
+            });
+
+            // Center circle and average
+            html += `
+                <circle cx="${cx}" cy="${cy}" r="${innerRadius - 15}" fill="#16213e"/>
+                <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#eee" font-size="36" font-weight="600" font-family="system-ui, -apple-system, sans-serif" dy="-8">${average}%</text>
+                <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#888" font-size="12" font-family="system-ui, -apple-system, sans-serif" dy="20">AVERAGE</text>
+            `;
+
+            svg.innerHTML = html;
+        }
+
+        function renderLegend() {
+            const legend = document.getElementById('legend');
+            legend.innerHTML = categories.map((cat, i) => `
+                <div class="legend-item">
+                    <div class="legend-color" style="background: ${cat.color}"></div>
+                    <span class="legend-text">${cat.name}:</span>
+                    <span class="legend-value">${cat.value}%</span>
+                </div>
+            `).join('');
+        }
+
+        function exportPNG() {
+            const svg = document.getElementById('chart');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 300 DPI at 8 inches = 2400px, use 6x scale from 400px base
+            const scale = 6;
+            const chartSize = 400;
+            const lineHeight = 24;
+            const legendHeight = categories.length * lineHeight + 40;
+            const totalHeight = chartSize + legendHeight;
+
+            canvas.width = chartSize * scale;
+            canvas.height = totalHeight * scale;
+            ctx.scale(scale, scale);
+
+            // Transparent background (no fill)
+
+            // Convert SVG to image
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, chartSize, chartSize);
+                URL.revokeObjectURL(url);
+
+                // Draw legend vertically stacked and centered
+                const startY = chartSize + 25;
+                ctx.font = '14px system-ui, -apple-system, sans-serif';
+
+                categories.forEach((cat, i) => {
+                    const y = startY + i * lineHeight;
+                    const text = cat.name + ': ' + cat.value + '%';
+                    const textWidth = ctx.measureText(text).width;
+                    const totalWidth = 14 + 10 + textWidth; // color box + gap + text
+                    const x = (chartSize - totalWidth) / 2;
+
+                    // Color box
+                    ctx.fillStyle = cat.color;
+                    ctx.fillRect(x, y, 14, 14);
+
+                    // Category name
+                    ctx.fillStyle = '#aaaaaa';
+                    ctx.fillText(cat.name + ': ', x + 24, y + 11);
+
+                    // Value
+                    const nameWidth = ctx.measureText(cat.name + ': ').width;
+                    ctx.fillStyle = '#eeeeee';
+                    ctx.font = '600 14px system-ui, -apple-system, sans-serif';
+                    ctx.fillText(cat.value + '%', x + 24 + nameWidth, y + 11);
+                    ctx.font = '14px system-ui, -apple-system, sans-serif';
+                });
+
+                // Download
+                const filename = document.getElementById('filename').value.trim() || 'coverage-chart';
+                const link = document.createElement('a');
+                link.download = filename + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+            img.src = url;
+        }
+
+        // Initial render
+        renderInputs();
+        renderChart();
+        renderLegend();
+    </script>
+</body>
+</html>
