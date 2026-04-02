@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting Timer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-bg: #2d0f0f;
+      --warning-bg: #2d1f0f;
+      --radius: 10px;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 28px;
+      color: var(--text);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .timer-panel { grid-column: 1 / -1; }
+
+    /* ── Saved agendas sidebar ── */
+    .sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .save-agenda-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .save-agenda-form input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.85rem;
+      padding: 7px 9px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .save-agenda-form input:focus { border-color: var(--accent); }
+    .save-agenda-form input::placeholder { color: var(--muted); }
+
+    .save-agenda-form button { width: 100%; }
+
+    .saved-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 6px;
+      overflow-y: auto;
+      max-height: 260px;
+    }
+
+    .saved-agenda-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      transition: border-color 0.15s;
+    }
+
+    .saved-agenda-item:hover { border-color: var(--muted); }
+
+    .saved-agenda-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .saved-agenda-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .saved-agenda-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+    }
+
+    .saved-agenda-actions button {
+      flex: 1;
+      padding: 4px 6px;
+      font-size: 0.75rem;
+    }
+
+    .btn-load {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-load:hover { background: var(--accent-hover); }
+
+    .sidebar-empty {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 16px 0;
+      grid-column: 1 / -1;
+    }
+
+    /* ── Agenda panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .panel h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .add-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .add-form input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .add-form input:focus { border-color: var(--accent); }
+    .add-form input::placeholder { color: var(--muted); }
+
+    .add-form .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-form .row input { flex: 1; }
+
+    button {
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-icon {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 4px 6px;
+      font-size: 0.85rem;
+      line-height: 1;
+    }
+    .btn-icon:hover { color: var(--text); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: none;
+      padding: 4px 6px;
+      font-size: 1rem;
+    }
+    .btn-danger:hover { color: #ff6b6b; }
+
+    .agenda-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .agenda-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: grab;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+
+    .agenda-item:active { cursor: grabbing; }
+    .agenda-item.active { border-color: var(--accent); background: #1e1f35; }
+    .agenda-item.done { opacity: 0.4; }
+    .agenda-item.editing {
+      cursor: default;
+      border-color: var(--accent);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .drag-handle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      cursor: grab;
+      flex-shrink: 0;
+    }
+
+    .item-label {
+      flex: 1;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-dur {
+      font-size: 0.8rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* inline edit inputs */
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .edit-form input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.85rem;
+      padding: 5px 8px;
+      outline: none;
+    }
+
+    .edit-form-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .edit-form-row .edit-mins { width: 80px; flex-shrink: 0; }
+
+    .btn-save {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .btn-save:hover { background: var(--accent-hover); }
+
+    .empty-msg {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    /* ── Timer panel ── */
+    .timer-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .timer-display {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      text-align: center;
+      transition: background 0.4s, border-color 0.4s;
+      height: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .timer-display.warning {
+      background: var(--warning-bg);
+      border-color: var(--warning);
+    }
+
+    .timer-display.overtime {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+    }
+
+    .item-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    .item-index {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .clock {
+      font-size: 5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      transition: color 0.4s;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clock.normal  { color: var(--text); }
+    .clock.warning { color: var(--warning); }
+    .clock.overtime { color: var(--danger); }
+
+    .warning-badge {
+      visibility: hidden;
+      background: var(--warning);
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      animation: pulse 1s infinite;
+    }
+
+    .warning-badge.overtime-badge {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* ── Seek bar ── */
+    .seek-wrap {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .seek-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      min-width: 34px;
+    }
+
+    .seek-label.right { text-align: right; }
+
+    input[type="range"].seek {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+      /* filled portion via JS inline background */
+    }
+
+    input[type="range"].seek::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+    }
+
+    input[type="range"].seek::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+    }
+
+    input[type="range"].seek:hover::-webkit-slider-thumb { transform: scale(1.2); }
+    input[type="range"].seek:hover::-moz-range-thumb { transform: scale(1.2); }
+
+    input[type="range"].seek.warning-seek::-webkit-slider-thumb { background: var(--warning); }
+    input[type="range"].seek.overtime-seek::-webkit-slider-thumb { background: var(--danger); }
+    input[type="range"].seek.warning-seek::-moz-range-thumb { background: var(--warning); }
+    input[type="range"].seek.overtime-seek::-moz-range-thumb { background: var(--danger); }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      padding: 10px 22px;
+      font-size: 0.95rem;
+    }
+
+    .btn-start { background: var(--success); color: #fff; }
+    .btn-start:hover { background: #0ea571; }
+
+    .btn-pause { background: var(--warning); color: #000; }
+    .btn-pause:hover { background: #e08e0b; }
+
+    .btn-next { background: var(--accent); color: #fff; }
+    .btn-next:hover { background: var(--accent-hover); }
+
+    .btn-reset { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-reset:hover { color: var(--text); }
+
+    .btn-finish { background: linear-gradient(135deg, #10b981, #6366f1); color: #fff; }
+    .btn-finish:hover { opacity: 0.88; }
+
+    #confettiCanvas {
+      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .idle-msg {
+      color: var(--muted);
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    /* ── Summary ── */
+    .summary {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      text-align: center;
+    }
+
+    .summary h2 {
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+
+    .summary p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 580px) {
+      .layout { grid-template-columns: 1fr; }
+      .clock { font-size: 3.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Meeting Timer</h1>
+
+<div class="layout">
+  <!-- Timer (spans full top row) -->
+  <div class="timer-panel">
+    <div class="timer-display" id="timerDisplay">
+      <div class="idle-msg" id="idleMsg">Add agenda items and press Start</div>
+      <div id="activeTimer" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
+        <div class="item-index" id="itemIndex"></div>
+        <div class="item-name" id="currentItemName"></div>
+        <div class="clock normal" id="clock">00:00</div>
+        <div class="warning-badge" id="warningBadge">Under 1 minute!</div>
+        <div class="seek-wrap">
+          <span class="seek-label" id="seekElapsed">00:00</span>
+          <input type="range" class="seek" id="seekBar" min="0" max="1000" value="1000" />
+          <span class="seek-label right" id="seekTotal">00:00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary" id="summary">
+      <h2>Meeting Complete</h2>
+      <p id="summaryText"></p>
+      <button class="btn-primary" onclick="resetAll()">Start Over</button>
+    </div>
+
+    <div class="controls" id="controls">
+      <button class="btn-start" id="startBtn" onclick="startResume()">Start</button>
+      <button class="btn-pause" id="pauseBtn" onclick="pause()" style="display:none">Pause</button>
+      <button class="btn-next" id="nextBtn" onclick="nextItem()" style="display:none">Next Item</button>
+      <button class="btn-finish" id="finishBtn" onclick="finishMeeting()" style="display:none">Finish Meeting</button>
+      <button class="btn-reset btn-ghost" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Saved agendas -->
+  <div class="sidebar">
+    <h2>Saved Agendas</h2>
+    <div class="save-agenda-form">
+      <input type="text" id="agendaSaveName" placeholder="Agenda name" />
+      <button class="btn-primary" onclick="saveAgenda()">Save current</button>
+    </div>
+    <div class="saved-list" id="savedList">
+      <div class="sidebar-empty" id="savedEmpty">No saved agendas</div>
+    </div>
+  </div>
+
+  <!-- Agenda -->
+  <div class="panel">
+    <h2>Agenda</h2>
+    <div class="add-form">
+      <input type="text" id="itemName" placeholder="Agenda item" />
+      <div class="row">
+        <input type="number" id="itemMins" placeholder="Minutes" min="1" max="999" />
+        <button class="btn-primary" onclick="addItem()">Add</button>
+      </div>
+    </div>
+    <div class="agenda-list" id="agendaList">
+      <div class="empty-msg" id="emptyMsg">No items yet. Add one above.</div>
+    </div>
+  </div>
+</div>
+
+<canvas id="confettiCanvas"></canvas>
+
+<script>
+  /* ── State ── */
+  let items = [];
+  let current = -1;
+  let remaining = 0;
+  let totalSecs = 0;
+  let running = false;
+  let ticker = null;
+  let dragSrc = null;
+  let seeking = false;
+
+  /* ── Persistence ── */
+  function persistCurrent() {
+    localStorage.setItem('mt_current', JSON.stringify(items));
+  }
+
+  function loadCurrent() {
+    try { items = JSON.parse(localStorage.getItem('mt_current')) || []; } catch { items = []; }
+  }
+
+  function savedAgendas() {
+    try { return JSON.parse(localStorage.getItem('mt_agendas')) || []; } catch { return []; }
+  }
+
+  function persistAgendas(list) {
+    localStorage.setItem('mt_agendas', JSON.stringify(list));
+  }
+
+  function saveAgenda() {
+    const name = document.getElementById('agendaSaveName').value.trim();
+    if (!name || !items.length) return;
+    const list = savedAgendas();
+    list.push({ id: Date.now(), name, items: JSON.parse(JSON.stringify(items)) });
+    persistAgendas(list);
+    document.getElementById('agendaSaveName').value = '';
+    renderSaved();
+  }
+
+  function loadAgenda(id) {
+    const list = savedAgendas();
+    const agenda = list.find(a => a.id === id);
+    if (!agenda) return;
+    if (running) resetAll();
+    items = JSON.parse(JSON.stringify(agenda.items));
+    persistCurrent();
+    renderList();
+  }
+
+  function deleteAgenda(id) {
+    const list = savedAgendas().filter(a => a.id !== id);
+    persistAgendas(list);
+    renderSaved();
+  }
+
+  function renderSaved() {
+    const list = savedAgendas();
+    const container = document.getElementById('savedList');
+    container.querySelectorAll('.saved-agenda-item').forEach(el => el.remove());
+    document.getElementById('savedEmpty').style.display = list.length ? 'none' : 'block';
+    list.forEach(agenda => {
+      const totalMins = Math.round(agenda.items.reduce((a, b) => a + b.secs, 0) / 60);
+      const div = document.createElement('div');
+      div.className = 'saved-agenda-item';
+      div.innerHTML = `
+        <div class="saved-agenda-name" title="${esc(agenda.name)}">${esc(agenda.name)}</div>
+        <div class="saved-agenda-meta">${agenda.items.length} item${agenda.items.length !== 1 ? 's' : ''} · ${totalMins}m</div>
+        <div class="saved-agenda-actions">
+          <button class="btn-load" onclick="loadAgenda(${agenda.id})">Load</button>
+          <button class="btn-danger" onclick="deleteAgenda(${agenda.id})">&#x2715;</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  /* ── Seek bar ── */
+  const seekBar = document.getElementById('seekBar');
+
+  seekBar.addEventListener('mousedown', () => { seeking = true; });
+  seekBar.addEventListener('touchstart', () => { seeking = true; }, { passive: true });
+
+  seekBar.addEventListener('input', () => {
+    if (current < 0) return;
+    const elapsedRatio = seekBar.value / 1000;
+    remaining = Math.round((1 - elapsedRatio) * totalSecs);
+    updateDisplay();
+  });
+
+  document.addEventListener('mouseup', () => { seeking = false; });
+  document.addEventListener('touchend', () => { seeking = false; });
+
+  /* ── Agenda management ── */
+  function addItem() {
+    const name = document.getElementById('itemName').value.trim();
+    const mins = parseInt(document.getElementById('itemMins').value, 10);
+    if (!name || !mins || mins < 1) return;
+    items.push({ name, secs: mins * 60 });
+    document.getElementById('itemName').value = '';
+    document.getElementById('itemMins').value = '';
+    document.getElementById('itemName').focus();
+    persistCurrent();
+    renderList();
+  }
+
+  document.getElementById('itemName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('itemMins').focus();
+  });
+  document.getElementById('itemMins').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addItem();
+  });
+
+  function removeItem(i) {
+    items.splice(i, 1);
+    persistCurrent();
+    renderList();
+  }
+
+  function editItem(i) {
+    renderList(i);
+  }
+
+  function saveEdit(i) {
+    const nameEl = document.querySelector(`.edit-name[data-idx="${i}"]`);
+    const minsEl = document.querySelector(`.edit-mins[data-idx="${i}"]`);
+    const newName = nameEl.value.trim();
+    const newMins = parseInt(minsEl.value, 10);
+    if (!newName || !newMins || newMins < 1) return;
+    const newSecs = newMins * 60;
+
+    // If editing the currently active item, adjust totalSecs / remaining proportionally
+    if (i === current) {
+      const progress = totalSecs > 0 ? (totalSecs - remaining) / totalSecs : 0;
+      totalSecs = newSecs;
+      remaining = Math.round(newSecs * (1 - progress));
+      if (remaining < 0) remaining = 0;
+    }
+
+    items[i] = { name: newName, secs: newSecs };
+    persistCurrent();
+    renderList();
+    if (i === current) updateDisplay();
+  }
+
+  function cancelEdit() {
+    renderList();
+  }
+
+  function renderList(editingIndex = -1) {
+    const list = document.getElementById('agendaList');
+    const empty = document.getElementById('emptyMsg');
+    list.querySelectorAll('.agenda-item').forEach(el => el.remove());
+    empty.style.display = items.length ? 'none' : 'block';
+
+    items.forEach((item, i) => {
+      const div = document.createElement('div');
+      const isEditing = i === editingIndex;
+      div.className = 'agenda-item' +
+        (i === current ? ' active' : '') +
+        (i < current ? ' done' : '') +
+        (isEditing ? ' editing' : '');
+      div.draggable = !isEditing;
+      div.dataset.index = i;
+
+      if (isEditing) {
+        div.innerHTML = `
+          <div class="edit-form">
+            <input class="edit-name" data-idx="${i}" type="text" value="${esc(item.name)}" placeholder="Item name" />
+            <div class="edit-form-row">
+              <input class="edit-mins" data-idx="${i}" type="number" value="${Math.round(item.secs/60)}" min="1" max="999" placeholder="min" />
+              <button class="btn-save" onclick="saveEdit(${i})">Save</button>
+              <button class="btn-icon" onclick="cancelEdit()" title="Cancel">&#x2715;</button>
+            </div>
+          </div>
+        `;
+        // Focus name input, select all
+        setTimeout(() => {
+          const inp = div.querySelector('.edit-name');
+          if (inp) { inp.focus(); inp.select(); }
+        }, 0);
+        // Enter to save, Escape to cancel
+        div.querySelectorAll('input').forEach(inp => {
+          inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') saveEdit(i);
+            if (e.key === 'Escape') cancelEdit();
+          });
+        });
+      } else {
+        div.innerHTML = `
+          <span class="drag-handle">&#9776;</span>
+          <span class="item-label">${esc(item.name)}</span>
+          <span class="item-dur">${fmtMins(item.secs)}</span>
+          <button class="btn-icon" title="Edit" onclick="editItem(${i})">&#9998;</button>
+          <button class="btn-danger" title="Remove" onclick="removeItem(${i})">&#x2715;</button>
+        `;
+        div.addEventListener('dragstart', onDragStart);
+        div.addEventListener('dragover', onDragOver);
+        div.addEventListener('drop', onDrop);
+        div.addEventListener('dragend', () => document.querySelectorAll('.agenda-item').forEach(el => el.style.opacity = ''));
+      }
+
+      list.appendChild(div);
+    });
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtMins(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return s ? `${m}m ${s}s` : `${m}m`;
+  }
+
+  function fmtClock(secs) {
+    const abs = Math.abs(secs);
+    const m = Math.floor(abs / 60);
+    const s = abs % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  /* ── Drag & drop reorder ── */
+  function onDragStart(e) {
+    dragSrc = +e.currentTarget.dataset.index;
+    e.currentTarget.style.opacity = '0.4';
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    const dest = +e.currentTarget.dataset.index;
+    if (dragSrc === dest) return;
+    const moved = items.splice(dragSrc, 1)[0];
+    items.splice(dest, 0, moved);
+    if (current === dragSrc) current = dest;
+    else if (current > dragSrc && current <= dest) current--;
+    else if (current < dragSrc && current >= dest) current++;
+    persistCurrent();
+    renderList();
+  }
+
+  /* ── Timer control ── */
+  function startResume() {
+    if (items.length === 0) return;
+    if (current === -1) {
+      current = 0;
+      remaining = items[0].secs;
+      totalSecs = items[0].secs;
+      showActiveTimer();
+    }
+    running = true;
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('pauseBtn').style.display = '';
+    const isLast = current === items.length - 1;
+    document.getElementById('nextBtn').style.display = isLast ? 'none' : '';
+    document.getElementById('finishBtn').style.display = isLast ? '' : 'none';
+    ticker = setInterval(tick, 1000);
+  }
+
+  function pause() {
+    running = false;
+    clearInterval(ticker);
+    document.getElementById('pauseBtn').style.display = 'none';
+    document.getElementById('startBtn').style.display = '';
+    document.getElementById('startBtn').textContent = 'Resume';
+  }
+
+  function nextItem() {
+    clearInterval(ticker);
+    running = false;
+    if (current < items.length - 1) {
+      current++;
+      remaining = items[current].secs;
+      totalSecs = items[current].secs;
+      showActiveTimer();
+      startResume();
+    }
+  }
+
+  function resetAll() {
+    clearInterval(ticker);
+    running = false;
+    current = -1;
+    remaining = 0;
+    totalSecs = 0;
+
+    document.getElementById('timerDisplay').className = 'timer-display';
+    document.getElementById('timerDisplay').style.display = '';
+    document.getElementById('idleMsg').style.display = '';
+    document.getElementById('activeTimer').style.display = 'none';
+    document.getElementById('clock').className = 'clock normal';
+    document.getElementById('warningBadge').style.visibility = 'hidden';
+
+    document.getElementById('summary').style.display = 'none';
+    document.getElementById('controls').style.display = '';
+    document.getElementById('startBtn').style.display = '';
+    document.getElementById('startBtn').textContent = 'Start';
+    document.getElementById('pauseBtn').style.display = 'none';
+    document.getElementById('nextBtn').style.display = 'none';
+    document.getElementById('finishBtn').style.display = 'none';
+
+    renderList();
+  }
+
+  function tick() {
+    if (seeking) return;
+    remaining--;
+    updateDisplay();
+  }
+
+  function showActiveTimer() {
+    document.getElementById('idleMsg').style.display = 'none';
+    const at = document.getElementById('activeTimer');
+    at.style.display = 'flex';
+    updateDisplay();
+    renderList();
+  }
+
+  function updateDisplay() {
+    const isOvertime = remaining < 0;
+    const isWarning = !isOvertime && remaining <= 60;
+    const display = document.getElementById('timerDisplay');
+    const clock = document.getElementById('clock');
+    const badge = document.getElementById('warningBadge');
+    const seek = document.getElementById('seekBar');
+
+    // Item info
+    document.getElementById('itemIndex').textContent =
+      `Item ${current + 1} of ${items.length}`;
+    document.getElementById('currentItemName').textContent =
+      items[current].name;
+
+    // Clock
+    clock.textContent = (isOvertime ? '+' : '') + fmtClock(remaining);
+
+    // Seek bar
+    const clampedRemaining = Math.max(0, remaining);
+    const elapsed = totalSecs - clampedRemaining;
+    const elapsedRatio = totalSecs > 0 ? elapsed / totalSecs : 0;
+    if (!seeking) seek.value = Math.round(elapsedRatio * 1000);
+
+    document.getElementById('seekElapsed').textContent = fmtClock(elapsed);
+    document.getElementById('seekTotal').textContent = fmtClock(totalSecs);
+
+    // Track colour for filled portion
+    let trackColor;
+    if (isOvertime) {
+      trackColor = 'var(--danger)';
+    } else if (isWarning) {
+      trackColor = 'var(--warning)';
+    } else {
+      trackColor = 'var(--accent)';
+    }
+    // Fill from left = elapsed (thumb moves left→right as time passes)
+    const fillPct = elapsedRatio * 100;
+    seek.style.background = `linear-gradient(to right, ${trackColor} ${fillPct}%, var(--border) ${fillPct}%)`;
+
+    // Colours
+    if (isOvertime) {
+      display.className = 'timer-display overtime';
+      clock.className = 'clock overtime';
+      badge.className = 'warning-badge overtime-badge';
+      badge.textContent = 'Over time!';
+      badge.style.visibility = 'visible';
+      seek.className = 'seek overtime-seek';
+    } else if (isWarning) {
+      display.className = 'timer-display warning';
+      clock.className = 'clock warning';
+      badge.className = 'warning-badge';
+      badge.textContent = 'Under 1 minute!';
+      badge.style.visibility = 'visible';
+      seek.className = 'seek warning-seek';
+    } else {
+      display.className = 'timer-display';
+      clock.className = 'clock normal';
+      badge.style.visibility = 'hidden';
+      seek.className = 'seek';
+    }
+  }
+
+  function finishMeeting() {
+    resetAll();
+    launchConfetti();
+  }
+
+  function launchConfetti() {
+    const canvas = document.getElementById('confettiCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+
+    const colors = ['#6366f1','#818cf8','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#fbbf24'];
+    const particles = Array.from({ length: 200 }, () => ({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * canvas.height * 0.5,
+      w: Math.random() * 13 + 6,
+      h: Math.random() * 7 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 5,
+      vy: Math.random() * 4 + 2,
+      rot: Math.random() * Math.PI * 2,
+      vrot: (Math.random() - 0.5) * 0.18,
+    }));
+
+    const duration = 2800;
+    const fadeStart = duration * 0.55;
+    let start = null;
+
+    function frame(ts) {
+      if (!start) start = ts;
+      const t = ts - start;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const fadeRatio = t < fadeStart ? 1 : Math.max(0, 1 - (t - fadeStart) / (duration - fadeStart));
+
+      // Centre message
+      const msgAlpha = t < 400 ? t / 400 : fadeRatio;
+      ctx.save();
+      ctx.globalAlpha = msgAlpha;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 16;
+      ctx.font = 'bold 2.8rem system-ui, sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('🎉 Meeting complete!', canvas.width / 2, canvas.height / 2);
+      ctx.restore();
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.09;
+        p.rot += p.vrot;
+        ctx.save();
+        ctx.globalAlpha = fadeRatio;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+
+      if (t < duration) requestAnimationFrame(frame);
+      else canvas.style.display = 'none';
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // Init
+  loadCurrent();
+  renderList();
+  renderSaved();
+
+  document.getElementById('agendaSaveName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveAgenda();
+  });
+</script>
+</body>
+</html>
