@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Generator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+  <meta name="description" content="Free browser-based resume generator. Build your resume, preview it, and export as PDF. All data stays in your browser.">
+  <meta name="author" content="azn-abel">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    header {
+      background: #1e3a5f;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.3px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 6px; font-size: .875rem;
+      font-weight: 600; cursor: pointer; border: none; transition: .15s;
+      text-decoration: none;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-ghost { background: rgba(255,255,255,.15); color: white; border: 1px solid rgba(255,255,255,.3); }
+    .btn-ghost:hover { background: rgba(255,255,255,.25); }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-sm { padding: 5px 11px; font-size: .8rem; }
+
+    /* ── Layout ── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 0;
+      height: calc(100vh - 57px);
+    }
+
+    /* ── Editor panel ── */
+    .editor {
+      background: white;
+      overflow-y: auto;
+      border-right: 1px solid #d1d5db;
+      display: flex;
+      flex-direction: column;
+    }
+    .section-tabs {
+      display: flex;
+      border-bottom: 2px solid #e5e7eb;
+      background: #f9fafb;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      padding: 10px 14px;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #6b7280;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: .15s;
+      margin-bottom: -2px;
+    }
+    .tab-btn.active { color: #1e3a5f; border-bottom-color: #1e3a5f; background: white; }
+    .tab-btn:hover:not(.active) { color: #374151; background: #f3f4f6; }
+
+    .tab-panel { display: none; padding: 20px; flex: 1; }
+    .tab-panel.active { display: block; }
+
+    .field-group { margin-bottom: 16px; }
+    .field-group label {
+      display: block; font-size: .8rem; font-weight: 600;
+      color: #374151; margin-bottom: 5px;
+    }
+    .field-group input,
+    .field-group textarea,
+    .field-group select {
+      width: 100%; padding: 8px 10px; border: 1px solid #d1d5db;
+      border-radius: 6px; font-size: .875rem; color: #1a1a1a;
+      transition: border-color .15s;
+      font-family: inherit;
+    }
+    .field-group input:focus,
+    .field-group textarea:focus,
+    .field-group select:focus {
+      outline: none; border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .field-group textarea { resize: vertical; min-height: 72px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* repeatable items */
+    .card {
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 14px; margin-bottom: 12px; background: #fafafa;
+      position: relative;
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-title { font-size: .8rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .5px; }
+    .add-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 14px; border-radius: 6px; font-size: .85rem;
+      font-weight: 600; cursor: pointer; border: 2px dashed #d1d5db;
+      background: white; color: #6b7280; width: 100%;
+      justify-content: center; transition: .15s; margin-top: 4px;
+    }
+    .add-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+
+    .hint { font-size: .75rem; color: #9ca3af; margin-top: 4px; }
+
+    /* skill tags */
+    .skills-input-row { display: flex; gap: 8px; }
+    .skills-input-row input { flex: 1; }
+    .tags-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #dbeafe; color: #1e40af; padding: 3px 8px;
+      border-radius: 4px; font-size: .8rem; font-weight: 500;
+    }
+    .tag-remove { cursor: pointer; font-size: .9rem; line-height: 1; color: #3b82f6; }
+    .tag-remove:hover { color: #dc2626; }
+
+    /* ── Preview panel ── */
+    .preview {
+      background: #6b7280;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px;
+      gap: 0;
+    }
+
+    /* ── Resume paper ── */
+    .resume-paper {
+      background: white;
+      width: 816px; /* 8.5in at 96dpi */
+      min-height: 1056px; /* 11in at 96dpi */
+      padding: 48px 58px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.35);
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      line-height: 1.4;
+      color: #000;
+      position: relative;
+    }
+
+    /* resume content styles */
+    .r-name {
+      font-size: 22pt;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+    .r-contact {
+      text-align: center;
+      font-size: 10pt;
+      color: #333;
+      margin-bottom: 16px;
+    }
+    .r-contact span { margin: 0 6px; }
+    .r-contact a { color: #000; text-decoration: none; }
+    .r-contact a:hover { text-decoration: underline; }
+    .r-divider {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 10px 0 8px;
+    }
+    .r-section-title {
+      font-size: 12pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+    .r-entry { margin-bottom: 10px; }
+    .r-entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .r-entry-title { font-weight: bold; font-size: 11pt; }
+    .r-entry-date { font-size: 10pt; white-space: nowrap; color: #333; }
+    .r-entry-subtitle { font-style: italic; font-size: 10.5pt; color: #333; }
+    .r-entry-body { margin-top: 3px; font-size: 10.5pt; }
+    .r-bullets { margin: 4px 0 0 18px; padding: 0; }
+    .r-bullets li { margin-bottom: 2px; font-size: 10.5pt; }
+    .r-skills-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 0;
+    }
+    .r-skill-category { margin-bottom: 1px; font-size: 10.5pt; width: 100%; }
+    .r-skill-category strong { font-weight: bold; }
+    .r-summary { font-size: 10.5pt; margin-bottom: 2px; }
+
+    /* placeholder when empty */
+    .r-placeholder {
+      color: #9ca3af;
+      font-style: italic;
+      font-family: -apple-system, sans-serif;
+      font-size: 10pt;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      @page { size: letter; margin: 0.2in 0.25in; }
+      body { background: white; }
+      header, .editor, .section-tabs { display: none !important; }
+      .workspace { display: block; height: auto; }
+      .preview {
+        background: white;
+        padding: 0;
+        display: block;
+      }
+      .resume-paper {
+        box-shadow: none;
+        width: 100%;
+        min-height: 0;
+        padding: 0;
+      }
+      .r-entry { page-break-inside: avoid; }
+      .r-bullets { page-break-inside: avoid; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .editor { height: 50vh; }
+      .preview { padding: 16px; }
+      .resume-paper { width: 100%; transform-origin: top left; }
+    }
+
+    /* scrollbar */
+    .editor::-webkit-scrollbar,
+    .preview::-webkit-scrollbar { width: 6px; }
+    .editor::-webkit-scrollbar-thumb,
+    .preview::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📄 Resume Generator</h1>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" id="clearBtn">Clear All</button>
+    <button class="btn btn-success" id="exportBtn">⬇ Export PDF</button>
+  </div>
+</header>
+
+<div class="workspace">
+  <!-- ════════ EDITOR ════════ -->
+  <div class="editor">
+    <div class="section-tabs">
+      <button class="tab-btn active" data-tab="basics">Basics</button>
+      <button class="tab-btn" data-tab="summary">Summary</button>
+      <button class="tab-btn" data-tab="experience">Experience</button>
+      <button class="tab-btn" data-tab="education">Education</button>
+      <button class="tab-btn" data-tab="skills">Skills</button>
+      <button class="tab-btn" data-tab="projects">Projects</button>
+      <button class="tab-btn" data-tab="extras">Extras</button>
+    </div>
+
+    <!-- BASICS -->
+    <div class="tab-panel active" id="tab-basics">
+      <div class="field-group">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="Jane Doe">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="jane@example.com">
+        </div>
+        <div class="field-group">
+          <label>Phone</label>
+          <input type="text" id="phone" placeholder="(555) 555-5555">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Location</label>
+          <input type="text" id="location" placeholder="San Francisco, CA">
+        </div>
+        <div class="field-group">
+          <label>Website / Portfolio</label>
+          <input type="text" id="website" placeholder="janedoe.dev">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>LinkedIn</label>
+          <input type="text" id="linkedin" placeholder="linkedin.com/in/janedoe">
+        </div>
+        <div class="field-group">
+          <label>GitHub</label>
+          <input type="text" id="github" placeholder="github.com/janedoe">
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="tab-panel" id="tab-summary">
+      <div class="field-group">
+        <label>Professional Summary</label>
+        <textarea id="summary" rows="6" placeholder="A brief 2–4 sentence overview of who you are, your expertise, and what you bring to the table."></textarea>
+        <p class="hint">Keep it concise — 2 to 4 sentences works best.</p>
+      </div>
+    </div>
+
+    <!-- EXPERIENCE -->
+    <div class="tab-panel" id="tab-experience">
+      <div id="exp-list"></div>
+      <button class="add-btn" id="addExpBtn">+ Add Position</button>
+    </div>
+
+    <!-- EDUCATION -->
+    <div class="tab-panel" id="tab-education">
+      <div id="edu-list"></div>
+      <button class="add-btn" id="addEduBtn">+ Add Education</button>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="tab-panel" id="tab-skills">
+      <p style="font-size:.8rem;color:#6b7280;margin-bottom:14px;">Group skills by category (e.g. Languages, Frameworks, Tools). Leave the category blank to list skills without a header.</p>
+      <div id="skill-groups"></div>
+      <button class="add-btn" id="addSkillGroupBtn">+ Add Skill Category</button>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="tab-panel" id="tab-projects">
+      <div id="proj-list"></div>
+      <button class="add-btn" id="addProjBtn">+ Add Project</button>
+    </div>
+
+    <!-- EXTRAS -->
+    <div class="tab-panel" id="tab-extras">
+      <p style="font-size:.8rem;color:#6b7280;margin-bottom:14px;">Add certifications, awards, volunteer work, publications, languages, or any other section.</p>
+      <div id="extras-list"></div>
+      <button class="add-btn" id="addExtraBtn">+ Add Section</button>
+    </div>
+  </div>
+
+  <!-- ════════ PREVIEW ════════ -->
+  <div class="preview">
+    <div class="resume-paper" id="resumePaper">
+      <!-- dynamically rendered -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+const DEFAULT_STATE = {
+  name: '', email: '', phone: '', location: '', website: '', linkedin: '', github: '',
+  summary: '',
+  experience: [],
+  education: [],
+  skillGroups: [],
+  projects: [],
+  extras: []
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+// ─────────────────────────────────────────────
+// Persistence
+// ─────────────────────────────────────────────
+const LS_KEY = 'resumeGeneratorData';
+
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) state = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+  } catch (e) { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────
+// Tabs
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Basics bindings
+// ─────────────────────────────────────────────
+['name','email','phone','location','website','linkedin','github','summary'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    state[id] = el.value;
+    save();
+    renderPreview();
+  });
+});
+
+// ─────────────────────────────────────────────
+// Generic list helpers
+// ─────────────────────────────────────────────
+function makeId() { return '_' + Math.random().toString(36).slice(2, 9); }
+
+function bindField(el, obj, key) {
+  el.value = obj[key] || '';
+  el.addEventListener('input', () => { obj[key] = el.value; save(); renderPreview(); });
+}
+
+// ─────────────────────────────────────────────
+// Experience
+// ─────────────────────────────────────────────
+function newExp() {
+  return { id: makeId(), company: '', title: '', location: '', startDate: '', endDate: '', current: false, bullets: '' };
+}
+
+function renderExpList() {
+  const container = document.getElementById('exp-list');
+  container.innerHTML = '';
+  state.experience.forEach((exp, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">Position ${i + 1}</span>
+        <button class="btn btn-danger btn-sm remove-exp" data-id="${exp.id}">Remove</button>
+      </div>
+      <div class="field-group"><label>Job Title</label><input type="text" data-field="title" placeholder="Software Engineer"></div>
+      <div class="field-group"><label>Company</label><input type="text" data-field="company" placeholder="Acme Corp"></div>
+      <div class="field-group"><label>Location</label><input type="text" data-field="location" placeholder="Remote / New York, NY"></div>
+      <div class="field-row">
+        <div class="field-group"><label>Start Date</label><input type="text" data-field="startDate" placeholder="Jan 2022"></div>
+        <div class="field-group"><label>End Date</label><input type="text" data-field="endDate" placeholder="Present"></div>
+      </div>
+      <div class="field-group">
+        <label>Bullet Points</label>
+        <textarea data-field="bullets" rows="5" placeholder="• Led migration to microservices, reducing latency by 40%&#10;• Mentored 3 junior engineers&#10;&#10;One bullet per line. Start each with •, -, or just text."></textarea>
+        <p class="hint">One accomplishment per line.</p>
+      </div>
+    `;
+    card.querySelectorAll('[data-field]').forEach(el => bindField(el, exp, el.dataset.field));
+    card.querySelector('.remove-exp').addEventListener('click', () => {
+      state.experience = state.experience.filter(e => e.id !== exp.id);
+      save(); renderExpList(); renderPreview();
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('addExpBtn').addEventListener('click', () => {
+  state.experience.push(newExp());
+  save(); renderExpList(); renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Education
+// ─────────────────────────────────────────────
+function newEdu() {
+  return { id: makeId(), school: '', degree: '', field: '', location: '', startDate: '', endDate: '', gpa: '', notes: '' };
+}
+
+function renderEduList() {
+  const container = document.getElementById('edu-list');
+  container.innerHTML = '';
+  state.education.forEach((edu, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">School ${i + 1}</span>
+        <button class="btn btn-danger btn-sm remove-edu" data-id="${edu.id}">Remove</button>
+      </div>
+      <div class="field-group"><label>School / University</label><input type="text" data-field="school" placeholder="MIT"></div>
+      <div class="field-row">
+        <div class="field-group"><label>Degree</label><input type="text" data-field="degree" placeholder="B.S."></div>
+        <div class="field-group"><label>Field of Study</label><input type="text" data-field="field" placeholder="Computer Science"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Start Date</label><input type="text" data-field="startDate" placeholder="Sep 2016"></div>
+        <div class="field-group"><label>End Date</label><input type="text" data-field="endDate" placeholder="May 2020"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Location</label><input type="text" data-field="location" placeholder="Cambridge, MA"></div>
+        <div class="field-group"><label>GPA (optional)</label><input type="text" data-field="gpa" placeholder="3.9/4.0"></div>
+      </div>
+      <div class="field-group">
+        <label>Honors / Activities (optional)</label>
+        <textarea data-field="notes" rows="2" placeholder="Dean's List, Phi Beta Kappa, ACM Club President"></textarea>
+      </div>
+    `;
+    card.querySelectorAll('[data-field]').forEach(el => bindField(el, edu, el.dataset.field));
+    card.querySelector('.remove-edu').addEventListener('click', () => {
+      state.education = state.education.filter(e => e.id !== edu.id);
+      save(); renderEduList(); renderPreview();
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('addEduBtn').addEventListener('click', () => {
+  state.education.push(newEdu());
+  save(); renderEduList(); renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Skills
+// ─────────────────────────────────────────────
+function newSkillGroup() {
+  return { id: makeId(), category: '', skills: [] };
+}
+
+function renderSkillGroups() {
+  const container = document.getElementById('skill-groups');
+  container.innerHTML = '';
+  state.skillGroups.forEach((group, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">Category ${i + 1}</span>
+        <button class="btn btn-danger btn-sm remove-sg">Remove</button>
+      </div>
+      <div class="field-group">
+        <label>Category Label (optional)</label>
+        <input type="text" data-field="category" placeholder="e.g. Languages, Frameworks, Tools">
+      </div>
+      <div class="field-group">
+        <label>Skills</label>
+        <div class="skills-input-row">
+          <input type="text" class="skill-input" placeholder="Type a skill and press Enter">
+          <button class="btn btn-primary btn-sm add-skill-btn">Add</button>
+        </div>
+        <div class="tags-container"></div>
+      </div>
+    `;
+    const catInput = card.querySelector('[data-field="category"]');
+    bindField(catInput, group, 'category');
+
+    const tagsContainer = card.querySelector('.tags-container');
+    const skillInput = card.querySelector('.skill-input');
+
+    function renderTags() {
+      tagsContainer.innerHTML = '';
+      group.skills.forEach((skill, si) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.innerHTML = `${esc(skill)} <span class="tag-remove" data-si="${si}">×</span>`;
+        tag.querySelector('.tag-remove').addEventListener('click', () => {
+          group.skills.splice(si, 1);
+          save(); renderTags(); renderPreview();
+        });
+        tagsContainer.appendChild(tag);
+      });
+    }
+    renderTags();
+
+    function addSkill() {
+      const v = skillInput.value.trim();
+      if (v && !group.skills.includes(v)) {
+        group.skills.push(v);
+        save(); renderTags(); renderPreview();
+      }
+      skillInput.value = '';
+      skillInput.focus();
+    }
+    card.querySelector('.add-skill-btn').addEventListener('click', addSkill);
+    skillInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); }});
+
+    card.querySelector('.remove-sg').addEventListener('click', () => {
+      state.skillGroups = state.skillGroups.filter(g => g.id !== group.id);
+      save(); renderSkillGroups(); renderPreview();
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('addSkillGroupBtn').addEventListener('click', () => {
+  state.skillGroups.push(newSkillGroup());
+  save(); renderSkillGroups(); renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Projects
+// ─────────────────────────────────────────────
+function newProj() {
+  return { id: makeId(), name: '', tech: '', url: '', date: '', description: '', bullets: '' };
+}
+
+function renderProjList() {
+  const container = document.getElementById('proj-list');
+  container.innerHTML = '';
+  state.projects.forEach((proj, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">Project ${i + 1}</span>
+        <button class="btn btn-danger btn-sm remove-proj">Remove</button>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Project Name</label><input type="text" data-field="name" placeholder="My Awesome App"></div>
+        <div class="field-group"><label>Date / Period</label><input type="text" data-field="date" placeholder="2024"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Technologies</label><input type="text" data-field="tech" placeholder="React, Node, PostgreSQL"></div>
+        <div class="field-group"><label>URL (optional)</label><input type="text" data-field="url" placeholder="github.com/..."></div>
+      </div>
+      <div class="field-group">
+        <label>Description / Bullets</label>
+        <textarea data-field="bullets" rows="4" placeholder="• What it does&#10;• Your contributions&#10;• Impact or results"></textarea>
+        <p class="hint">One point per line.</p>
+      </div>
+    `;
+    card.querySelectorAll('[data-field]').forEach(el => bindField(el, proj, el.dataset.field));
+    card.querySelector('.remove-proj').addEventListener('click', () => {
+      state.projects = state.projects.filter(p => p.id !== proj.id);
+      save(); renderProjList(); renderPreview();
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('addProjBtn').addEventListener('click', () => {
+  state.projects.push(newProj());
+  save(); renderProjList(); renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Extras
+// ─────────────────────────────────────────────
+function newExtra() {
+  return { id: makeId(), sectionTitle: '', content: '' };
+}
+
+function renderExtrasList() {
+  const container = document.getElementById('extras-list');
+  container.innerHTML = '';
+  state.extras.forEach((extra, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">Section ${i + 1}</span>
+        <button class="btn btn-danger btn-sm remove-extra">Remove</button>
+      </div>
+      <div class="field-group"><label>Section Title</label><input type="text" data-field="sectionTitle" placeholder="e.g. Certifications, Awards, Languages"></div>
+      <div class="field-group">
+        <label>Content</label>
+        <textarea data-field="content" rows="4" placeholder="• AWS Certified Solutions Architect (2024)&#10;• Google Cloud Professional (2023)"></textarea>
+        <p class="hint">One item per line. Bullet points optional.</p>
+      </div>
+    `;
+    card.querySelectorAll('[data-field]').forEach(el => bindField(el, extra, el.dataset.field));
+    card.querySelector('.remove-extra').addEventListener('click', () => {
+      state.extras = state.extras.filter(e => e.id !== extra.id);
+      save(); renderExtrasList(); renderPreview();
+    });
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('addExtraBtn').addEventListener('click', () => {
+  state.extras.push(newExtra());
+  save(); renderExtrasList(); renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Render helpers
+// ─────────────────────────────────────────────
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function href(url) {
+  const u = (url || '').trim();
+  if (!u) return '';
+  return /^https?:\/\//i.test(u) ? u : 'https://' + u;
+}
+
+function bulletsToHtml(raw) {
+  if (!raw || !raw.trim()) return '';
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const items = lines.map(l => {
+    const text = l.replace(/^[•\-\*]\s*/, '');
+    return `<li>${esc(text)}</li>`;
+  });
+  return `<ul class="r-bullets">${items.join('')}</ul>`;
+}
+
+function contactSep(items) {
+  return items.filter(Boolean).join('<span> | </span>');
+}
+
+// ─────────────────────────────────────────────
+// Render Preview
+// ─────────────────────────────────────────────
+function renderPreview() {
+  const paper = document.getElementById('resumePaper');
+  let html = '';
+
+  // Name
+  if (state.name) {
+    html += `<div class="r-name">${esc(state.name)}</div>`;
+  } else {
+    html += `<div class="r-name r-placeholder">Your Name</div>`;
+  }
+
+  // Contact line
+  const contactItems = [];
+  if (state.location) contactItems.push(esc(state.location));
+  if (state.phone) contactItems.push(esc(state.phone));
+  if (state.email) contactItems.push(`<a href="mailto:${esc(state.email)}">${esc(state.email)}</a>`);
+  if (state.website) contactItems.push(`<a href="${esc(href(state.website))}" target="_blank">${esc(state.website)}</a>`);
+  if (state.linkedin) contactItems.push(`<a href="${esc(href(state.linkedin))}" target="_blank">${esc(state.linkedin)}</a>`);
+  if (state.github) contactItems.push(`<a href="${esc(href(state.github))}" target="_blank">${esc(state.github)}</a>`);
+
+  if (contactItems.length) {
+    html += `<div class="r-contact">${contactSep(contactItems)}</div>`;
+  }
+
+  html += `<hr class="r-divider">`;
+
+  // Summary
+  if (state.summary && state.summary.trim()) {
+    html += `<div class="r-section-title">Summary</div>`;
+    html += `<hr class="r-divider">`;
+    html += `<p class="r-summary">${esc(state.summary)}</p>`;
+  }
+
+  // Experience
+  const validExp = state.experience.filter(e => e.company || e.title);
+  if (validExp.length) {
+    html += `<div class="r-section-title">Experience</div><hr class="r-divider">`;
+    validExp.forEach(exp => {
+      html += `<div class="r-entry">`;
+      html += `<div class="r-entry-header">`;
+      html += `<span class="r-entry-title">${esc(exp.title)}${exp.title && exp.company ? ' — ' : ''}${esc(exp.company)}</span>`;
+      const dates = [exp.startDate, exp.endDate].filter(Boolean).join(' – ');
+      if (dates || exp.location) {
+        html += `<span class="r-entry-date">${esc(exp.location ? (dates ? dates + ' | ' + exp.location : exp.location) : dates)}</span>`;
+      }
+      html += `</div>`;
+      if (exp.bullets) html += bulletsToHtml(exp.bullets);
+      html += `</div>`;
+    });
+  }
+
+  // Education
+  const validEdu = state.education.filter(e => e.school);
+  if (validEdu.length) {
+    html += `<div class="r-section-title">Education</div><hr class="r-divider">`;
+    validEdu.forEach(edu => {
+      html += `<div class="r-entry">`;
+      html += `<div class="r-entry-header">`;
+      const degreeStr = [edu.degree, edu.field].filter(Boolean).join(' in ');
+      html += `<span class="r-entry-title">${esc(edu.school)}</span>`;
+      const dateStr = [edu.startDate, edu.endDate].filter(Boolean).join(' – ');
+      html += `<span class="r-entry-date">${esc(dateStr)}</span>`;
+      html += `</div>`;
+      if (degreeStr) html += `<div class="r-entry-subtitle">${esc(degreeStr)}${edu.gpa ? ' | GPA: ' + esc(edu.gpa) : ''}${edu.location ? ' | ' + esc(edu.location) : ''}</div>`;
+      else if (edu.gpa || edu.location) html += `<div class="r-entry-subtitle">${[edu.gpa ? 'GPA: ' + esc(edu.gpa) : '', esc(edu.location)].filter(Boolean).join(' | ')}</div>`;
+      if (edu.notes) html += `<div class="r-entry-body">${esc(edu.notes)}</div>`;
+      html += `</div>`;
+    });
+  }
+
+  // Skills
+  const validSkillGroups = state.skillGroups.filter(g => g.skills.length);
+  if (validSkillGroups.length) {
+    html += `<div class="r-section-title">Skills</div><hr class="r-divider">`;
+    html += `<div class="r-skills-grid">`;
+    validSkillGroups.forEach(group => {
+      const skillStr = group.skills.map(s => esc(s)).join(', ');
+      if (group.category) {
+        html += `<div class="r-skill-category"><strong>${esc(group.category)}:</strong> ${skillStr}</div>`;
+      } else {
+        html += `<div class="r-skill-category">${skillStr}</div>`;
+      }
+    });
+    html += `</div>`;
+  }
+
+  // Projects
+  const validProj = state.projects.filter(p => p.name);
+  if (validProj.length) {
+    html += `<div class="r-section-title">Projects</div><hr class="r-divider">`;
+    validProj.forEach(proj => {
+      html += `<div class="r-entry">`;
+      html += `<div class="r-entry-header">`;
+      let titlePart = esc(proj.name);
+      if (proj.url) titlePart = `<a href="${esc(href(proj.url))}" target="_blank">${esc(proj.name)}</a>`;
+      html += `<span class="r-entry-title">${titlePart}${proj.tech ? ' <span style="font-weight:normal;font-style:italic;"> | ' + esc(proj.tech) + '</span>' : ''}</span>`;
+      if (proj.date) html += `<span class="r-entry-date">${esc(proj.date)}</span>`;
+      html += `</div>`;
+      if (proj.bullets) html += bulletsToHtml(proj.bullets);
+      html += `</div>`;
+    });
+  }
+
+  // Extras
+  const validExtras = state.extras.filter(e => e.sectionTitle);
+  validExtras.forEach(extra => {
+    html += `<div class="r-section-title">${esc(extra.sectionTitle)}</div><hr class="r-divider">`;
+    if (extra.content) html += bulletsToHtml(extra.content);
+  });
+
+  if (!html || html === '<hr class="r-divider">') {
+    html = `<div style="text-align:center;padding:60px 0;color:#9ca3af;font-family:sans-serif;">
+      <div style="font-size:2rem;margin-bottom:12px;">📝</div>
+      <div style="font-size:1rem;">Fill in your details on the left to build your resume.</div>
+    </div>`;
+  }
+
+  paper.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// Export PDF
+// ─────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  window.print();
+});
+
+// ─────────────────────────────────────────────
+// Clear all
+// ─────────────────────────────────────────────
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!confirm('Clear all resume data? This cannot be undone.')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  save();
+  initUI();
+  renderPreview();
+});
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+function initUI() {
+  ['name','email','phone','location','website','linkedin','github','summary'].forEach(id => {
+    document.getElementById(id).value = state[id] || '';
+  });
+  renderExpList();
+  renderEduList();
+  renderSkillGroups();
+  renderProjList();
+  renderExtrasList();
+}
+
+load();
+initUI();
+renderPreview();
+</script>
+</body>
+</html>
